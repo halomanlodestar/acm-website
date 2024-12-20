@@ -11,6 +11,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { HydratedDocument } from "mongoose";
@@ -34,8 +42,6 @@ const submitQuiz = async (
     quiz_id,
     selections: JSON.parse(selections || "{}"),
   };
-
-  // console.log(body);
 
   const res = await fetch("/api/quiz", {
     method: "POST",
@@ -84,6 +90,15 @@ const QuizAttempt = () => {
         Object.keys(selected).length === quiz.questions.length,
       );
   }, [quiz, questionNumber, selected]);
+
+  useEffect(() => {
+    const now = Date.now();
+    const end = new Date(quiz?.end!).getTime();
+
+    if (now > end) {
+      submitQuiz(data?.user!, quiz?._id.toString()!, router).then();
+    }
+  }, [questionNumber, selected]);
 
   const nextQuestion = () => {
     setQuestionNumber(Math.min(questionNumber + 1, quiz?.questions.length!));
@@ -156,27 +171,51 @@ const QuizAttempt = () => {
         </ul>
       </div>
       <div className={"flex w-full items-center justify-end"}>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger>
+        <Dialog>
+          <DialogTrigger>
+            <Button variant={answeredAllQuestions ? "default" : "secondary"}>
+              Submit
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {answeredAllQuestions
+                  ? "Submit your answers?"
+                  : "You still have questions left."}
+              </DialogTitle>
+              <DialogDescription>
+                {answeredAllQuestions ? (
+                  <span>You have answered all questions.</span>
+                ) : (
+                  <span>
+                    You still have some unanswered questions. Consider answering
+                    all questions.
+                  </span>
+                )}{" "}
+                Are you sure you want to submit?
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className={"w-full flex justify-end space-x-4"}>
+              <DialogTrigger>
+                <Button
+                  variant={answeredAllQuestions ? "secondary" : "default"}
+                >
+                  Cancel
+                </Button>
+              </DialogTrigger>
               <Button
-                variant={answeredAllQuestions ? "default" : "secondary"}
-                onClick={() =>
-                  submitQuiz(data?.user!, quiz._id.toString(), router)
-                }
+                onClick={() => {
+                  submitQuiz(data.user!, quiz._id.toString(), router).then();
+                }}
+                variant={answeredAllQuestions ? "default" : "destructive"}
               >
                 Submit
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {answeredAllQuestions ? (
-                <p>You are ready to go!!</p>
-              ) : (
-                <p>Consider answering all questions first</p>
-              )}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </main>
   );
